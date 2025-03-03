@@ -2,7 +2,7 @@
 #include "pico/stdlib.h"
 #include "pico/binary_info.h"
 #include "hardware/i2c.h"
-#include "ssd1306_font.h"
+#include "ssd1306_font_sarasa.h"
 
 int SSD1306_HEIGHT = 32;
 int SSD1306_WIDTH = 128;
@@ -248,16 +248,7 @@ int Display_GetTextBufferHeight()
 
 inline int GetFontIndex(uint8_t ch)
 {
-    if (ch >= 'A' && ch <= 'Z')
-    {
-        return ch - 'A' + 1;
-    }
-    else if (ch >= '0' && ch <= '9')
-    {
-        return ch - '0' + 27;
-    }
-    else
-        return 0; // Not got that char so space.
+    return ch;
 }
 void Display_DrawLine(uint8_t *buf, int x0, int y0, int x1, int y1, bool on)
 {
@@ -291,31 +282,50 @@ void Display_DrawLine(uint8_t *buf, int x0, int y0, int x1, int y1, bool on)
 void Display_WriteChar(uint8_t *buf, int16_t x, int16_t y, uint8_t ch)
 {
 
-    if (x > SSD1306_WIDTH - 8 || y > SSD1306_HEIGHT - 8)
+    if (x > SSD1306_WIDTH - FONT_WIDTH || y > SSD1306_HEIGHT - FONT_HEIGHT)
         return;
 
-    // For the moment, only write on Y row boundaries (every 8 vertical pixels)
-    y = y / 8;
-
-    ch = toupper(ch);
     int idx = GetFontIndex(ch);
-    int fb_idx = y * 128 + x;
-
-    for (int i = 0; i < 8; i++)
+    switch (FONT_MODE)
     {
-        buf[fb_idx++] = font[idx * 8 + i];
+    case 0:
+    {
+
+        // For the moment, only write on Y row boundaries (every 8 vertical pixels)
+        y = y / FONT_HEIGHT;
+        int fb_idx = y * 128 + x;
+
+        for (int i = 0; i < FONT_WIDTH; i++)
+        {
+            buf[fb_idx++] = font[idx * FONT_WIDTH + i];
+        }
+    }
+    break;
+    case 1:
+    {
+        int charSize = FONT_WIDTH * FONT_HEIGHT;
+        int dataPtr = idx * charSize;
+        for (size_t _x = 0; _x < FONT_WIDTH; _x++)
+        {
+            for (size_t _y = 0; _y < FONT_HEIGHT; _y++)
+            {
+                Display_SetPixel(buf, x + _x, y + _y, font[dataPtr + _x * FONT_HEIGHT + _y]);
+            }
+        }
+    }
+    break;
     }
 }
 void Display_WriteString(uint8_t *buf, int16_t x, int16_t y, char *str)
 {
 
     // Cull out any string off the screen
-    if (x > SSD1306_WIDTH - 8 || y > SSD1306_HEIGHT - 8)
+    if (x > SSD1306_WIDTH - FONT_WIDTH || y > SSD1306_HEIGHT - FONT_HEIGHT)
         return;
 
     while (*str)
     {
         Display_WriteChar(buf, x, y, *str++);
-        x += 8;
+        x += FONT_WIDTH;
     }
 }

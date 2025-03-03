@@ -78,13 +78,14 @@ int main()
             max=temp+10;
         }
         float v=temp/max;
-        for (size_t i = 0; i < h; i++)
+        for (size_t i = 0; i < h/5; i++)
         {
             Display_DrawLine(buf,0,i,W*v,i,true);
             Display_DrawLine(buf,W*v,i,W,i,false);
         }
         sprintf(strBuf,"%f",temp);
-        Display_WriteString(buf, W/2-20, h/2-8, strBuf);
+        Display_WriteString(buf, 0, h/2-16, strBuf);
+        Display_WriteString(buf, 0, h-16, "This is a test of screen.");
         Display_render(buf, &frame_area);
         
     }
