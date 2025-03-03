@@ -17,6 +17,7 @@ struct render_area
 
     int buflen;
 };
+void Display_SetMode(int W,int H);
 void Display_RenderAreaInit(struct render_area *area);
 void Display_RenderAreaCalcBufferLen(struct render_area *area);
 void Display_DriverInit(void *i2c_instance_ptr);

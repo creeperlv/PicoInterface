@@ -4,9 +4,13 @@
 #include "hardware/i2c.h"
 #include "ssd1306_font.h"
 
-#define SSD1306_HEIGHT 32
-#define SSD1306_WIDTH 128
-
+int SSD1306_HEIGHT = 32;
+int SSD1306_WIDTH = 128;
+#define SSD1306_PAGE_HEIGHT _u(8)
+int SSD1306_NUM_PAGES;
+int SSD1306_BUF_LEN;
+// #define SSD1306_NUM_PAGES (SSD1306_HEIGHT / SSD1306_PAGE_HEIGHT)
+// #define SSD1306_BUF_LEN (SSD1306_NUM_PAGES * SSD1306_WIDTH)
 #define SSD1306_I2C_ADDR _u(0x3C)
 
 // 400 is usual, but often these can be overclocked to improve display response.
@@ -42,10 +46,6 @@
 #define SSD1306_SET_COM_PIN_CFG _u(0xDA)
 #define SSD1306_SET_VCOM_DESEL _u(0xDB)
 
-#define SSD1306_PAGE_HEIGHT _u(8)
-#define SSD1306_NUM_PAGES (SSD1306_HEIGHT / SSD1306_PAGE_HEIGHT)
-#define SSD1306_BUF_LEN (SSD1306_NUM_PAGES * SSD1306_WIDTH)
-
 #define SSD1306_WRITE_MODE _u(0xFE)
 #define SSD1306_READ_MODE _u(0xFF)
 
@@ -55,6 +55,11 @@ void calc_render_area_buflen(struct render_area *area)
     area->buflen = (area->end_col - area->start_col + 1) * (area->end_page - area->start_page + 1);
 }
 
+void Display_SetMode(int W, int H)
+{
+    SSD1306_HEIGHT = H;
+    SSD1306_WIDTH = W;
+}
 void SSD1306_send_cmd(uint8_t cmd)
 {
     // I2C write process expects a control byte followed by data
@@ -64,7 +69,8 @@ void SSD1306_send_cmd(uint8_t cmd)
     i2c_write_blocking(i2c_default, SSD1306_I2C_ADDR, buf, 2, false);
 }
 
-void SSD1306_send_buf(uint8_t buf[], int buflen) {
+void SSD1306_send_buf(uint8_t buf[], int buflen)
+{
     // in horizontal addressing mode, the column address pointer auto-increments
     // and then wraps around to the next page, so we can send the entire frame
     // buffer in one gooooooo!
@@ -75,7 +81,7 @@ void SSD1306_send_buf(uint8_t buf[], int buflen) {
     uint8_t *temp_buf = malloc(buflen + 1);
 
     temp_buf[0] = 0x40;
-    memcpy(temp_buf+1, buf, buflen);
+    memcpy(temp_buf + 1, buf, buflen);
 
     i2c_write_blocking(i2c_default, SSD1306_I2C_ADDR, temp_buf, buflen + 1, false);
 
@@ -92,7 +98,19 @@ void Display_DriverInit(void *i2c_instance_ptr)
 }
 void Display_DeviceInit()
 {
-
+    uint8_t MAGIC = 0x12;
+    if (SSD1306_WIDTH == 128 && SSD1306_HEIGHT == 32)
+    {
+        MAGIC = 0x02;
+    }
+    else if (SSD1306_WIDTH == 128 && SSD1306_HEIGHT == 64)
+    {
+        MAGIC = 0x12;
+    }
+    else
+    {
+        MAGIC = 0x2;
+    }
     uint8_t cmds[] = {
         SSD1306_SET_DISP, // set display off
         /* memory mapping */
@@ -108,13 +126,7 @@ void Display_DeviceInit()
         0x00,                           // no offset
         SSD1306_SET_COM_PIN_CFG,        // set COM (common) pins hardware configuration. Board specific magic number.
                                         // 0x02 Works for 128x32, 0x12 Possibly works for 128x64. Other options 0x22, 0x32
-#if ((SSD1306_WIDTH == 128) && (SSD1306_HEIGHT == 32))
-        0x02,
-#elif ((SSD1306_WIDTH == 128) && (SSD1306_HEIGHT == 64))
-        0x12,
-#else
-        0x02,
-#endif
+        MAGIC,
         /* timing and driving scheme */
         SSD1306_SET_DISP_CLK_DIV, // set display clock divide ratio
         0x80,                     // div ratio of 1, standard freq
@@ -192,11 +204,12 @@ int Display_GetHeight()
 }
 int Display_GetBufferLen()
 {
-    return SSD1306_BUF_LEN;
+    return (SSD1306_NUM_PAGES * SSD1306_WIDTH);
 }
 void Display_RenderAreaInit(struct render_area *area)
 {
-    struct render_area a={
+    SSD1306_NUM_PAGES = SSD1306_HEIGHT / SSD1306_PAGE_HEIGHT;
+    struct render_area a = {
         start_col : 0,
         end_col : SSD1306_WIDTH - 1,
         start_page : 0,
