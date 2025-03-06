@@ -9,6 +9,7 @@
 #include "hardware/clocks.h"
 #include "hardware/uart.h"
 #include "../src/interface/Display.h"
+#include "../src/interface/ICComm.h"
 
 #include "hardware/adc.h"
 
@@ -35,7 +36,7 @@ float read_onboard_temperature(const char unit)
 int main()
 {
     stdio_init_all();
-    Display_SetMode(128,64);
+    Display_SetMode(128, 64);
     Display_DriverInit(i2c_default);
     gpio_set_function(PICO_DEFAULT_I2C_SDA_PIN, GPIO_FUNC_I2C);
     gpio_set_function(PICO_DEFAULT_I2C_SCL_PIN, GPIO_FUNC_I2C);
@@ -67,27 +68,26 @@ int main()
     Display_WriteString(buf, 40, 15, "C E F I");
     Display_render(buf, &frame_area);
     sleep_ms(500);
-    size_t W=Display_GetWidth();
-    size_t h=Display_GetHeight();
-    char* strBuf=malloc(20*sizeof(char));
-    float max=0;
+    size_t W = Display_GetWidth();
+    size_t h = Display_GetHeight();
+    char *strBuf = malloc(20 * sizeof(char));
+    float max = 0;
     while (true)
     {
-        float temp=read_onboard_temperature('C');
-        if(max<temp+10){
-            max=temp+10;
-        }
-        float v=temp/max;
-        for (size_t i = 0; i < h/5; i++)
+        float temp = read_onboard_temperature('C');
+        if (max < temp + 10)
         {
-            Display_DrawLine(buf,0,i,W*v,i,true);
-            Display_DrawLine(buf,W*v,i,W,i,false);
+            max = temp + 10;
         }
-        sprintf(strBuf,"%f",temp);
-        Display_WriteString(buf, 0, h/2-16, strBuf);
-        Display_WriteString(buf, 0, h-16, "This is a test of screen.");
+        float v = temp / max;
+        for (size_t i = 0; i < h / 5; i++)
+        {
+            Display_DrawLine(buf, 0, i, W * v, i, true);
+            Display_DrawLine(buf, W * v, i, W, i, false);
+        }
+        sprintf(strBuf, "%f", temp);
+        Display_WriteString(buf, 0, h / 2 - 16, strBuf);
+        Display_WriteString(buf, 0, h - 16, "This is a test of screen.");
         Display_render(buf, &frame_area);
-        
     }
-    
 }
